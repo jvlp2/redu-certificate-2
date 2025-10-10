@@ -22,7 +22,7 @@
       width: 950px;
       aspect-ratio: 297 / 210;
       border-radius: 24px;
-      background: url('fundo.png') no-repeat center/cover;
+      background: url({{{background}}}) no-repeat center/cover;
       background-color: white;
       display: flex;
       justify-content: center;
@@ -123,8 +123,8 @@
   <div class="background">
     <div class="content">
       <div class="top">
-        {{#each logo}}
-        <img src="{{{this}}}" alt="Logo">
+        {{#each logos}}
+        <img src="{{{this.url}}}" alt="Logo">
         {{/each}}
       </div>
 
@@ -133,24 +133,11 @@
         <h1>{{title}}</h1>
 
         <p>
-          asdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf
-          asdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf
-          asdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf
-          asdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf
-          asdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf
-          asdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf
-          asdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf
-          asdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf
-          asdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf
-          asdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf
-          asdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf
-          asdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf
-          asdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf sad fsad fsdaasdfsa fsad fsadf
-
+          {{{info}}}
         </p>
 
         <div class="signatures">
-          {{#each signature}}
+          {{#each signatures}}
           <div>
             <img src="{{{this.url}}}" alt="Assinatura">
             <p>{{this.name}}<br><small>{{this.role}}<br>{{this.organization}}</small></p>

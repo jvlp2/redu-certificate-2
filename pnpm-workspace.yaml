@@ -1,2 +1,5 @@
 onlyBuiltDependencies:
+  - '@nestjs/core'
+  - '@scarf/scarf'
   - aws-sdk
+  - unrs-resolver

@@ -5,7 +5,7 @@ import {
   CallHandler,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
-import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor as DefaultFileFieldsInterceptor } from '@nestjs/platform-express';
 import { MulterField } from '@nestjs/platform-express/multer/interfaces/multer-options.interface';
 
 type File = Express.Multer.File;
@@ -18,8 +18,8 @@ interface RequestWithFiles {
   files?: Record<string, File | File[]>;
 }
 
-export function CustomFileFieldsInterceptor(fields: MulterField[]) {
-  const fileFieldsInterceptor = FileFieldsInterceptor(fields);
+export function FileFieldsInterceptor(fields: MulterField[]) {
+  const fileFieldsInterceptor = DefaultFileFieldsInterceptor(fields);
 
   @Injectable()
   class FileFieldsSingleInterceptorClass implements NestInterceptor {

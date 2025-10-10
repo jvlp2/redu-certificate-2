@@ -11,4 +11,16 @@ export class Blueprint {
 
   @OneToMany(() => Template, (template) => template.blueprint)
   templates: Template[];
+
+  getFrontHtmlSpacesKey() {
+    return `blueprints/${this.id}/front`;
+  }
+
+  getBackSmallHtmlSpacesKey() {
+    return `blueprints/${this.id}/backSmall`;
+  }
+
+  getBackLargeHtmlSpacesKey() {
+    return `blueprints/${this.id}/backLarge`;
+  }
 }

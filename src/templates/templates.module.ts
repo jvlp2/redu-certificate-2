@@ -4,10 +4,16 @@ import { TemplatesController } from './templates.controller';
 import { SpacesModule } from 'src/spaces/spaces.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Template } from 'src/templates/entities/template.entity';
-import { Blueprint } from 'src/blueprints/entities/blueprint.entity';
+import { BlueprintsModule } from 'src/blueprints/blueprints.module';
+import { ReduApiModule } from 'src/redu-api/redu-api.module';
 
 @Module({
-  imports: [SpacesModule, TypeOrmModule.forFeature([Template, Blueprint])],
+  imports: [
+    ReduApiModule,
+    SpacesModule,
+    TypeOrmModule.forFeature([Template]),
+    BlueprintsModule,
+  ],
   controllers: [TemplatesController],
   providers: [TemplatesService],
   exports: [TemplatesService],

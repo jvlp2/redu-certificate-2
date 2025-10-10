@@ -1,11 +1,12 @@
-import { Blueprint } from 'src/blueprints/entities/blueprint.entity';
-import { JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
+import { Template } from 'src/templates/entities/template.entity';
+import { Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
 
+@Entity()
 export class Certificate {
   @PrimaryColumn('uuid', { default: () => 'uuidv7()' })
   id: string;
 
-  @ManyToOne(() => Blueprint, (blueprint) => blueprint.templates)
-  @JoinColumn({ name: 'blueprintId' })
-  blueprint: Blueprint;
+  @ManyToOne(() => Template, (template) => template.certificates)
+  @JoinColumn({ name: 'templateId' })
+  template: Template;
 }

@@ -40,7 +40,19 @@ function enableValidation(app: INestApplication) {
 }
 
 function enableSwagger(app: INestApplication) {
-  const config = new DocumentBuilder().setVersion('1.0').build();
+  const config = new DocumentBuilder()
+    .setVersion('1.0')
+    .addSecurity('X-Client-Name', {
+      type: 'apiKey',
+      in: 'header',
+      name: 'X-Client-Name',
+    })
+    .addSecurity('Authorization', {
+      type: 'apiKey',
+      in: 'header',
+      name: 'Authorization',
+    })
+    .build();
   SwaggerModule.setup('docs', app, () =>
     SwaggerModule.createDocument(app, config),
   );

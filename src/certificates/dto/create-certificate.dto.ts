@@ -1,8 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional } from 'class-validator';
+import { IsNotEmpty, IsUUID } from 'class-validator';
 
 export class CreateCertificateDto {
-  @ApiProperty({ type: 'string' })
-  @IsOptional()
-  blueprintId: string;
+  @ApiProperty({ type: 'string', format: 'uuid' })
+  @IsUUID()
+  @IsNotEmpty()
+  templateId: string;
 }

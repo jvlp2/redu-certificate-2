@@ -6,10 +6,24 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { HeaderResolver, I18nModule } from 'nestjs-i18n';
 import { BlueprintsModule } from './blueprints/blueprints.module';
 import { CertificatesModule } from './certificates/certificates.module';
+import { SignaturesModule } from './signatures/signatures.module';
+import { LogosModule } from './logos/logos.module';
+import { ReduApiModule } from './redu-api/redu-api.module';
 import * as path from 'path';
 
 @Module({
   imports: [
+    ConfigModule.forRoot(),
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      host: 'localhost',
+      port: 5432,
+      username: process.env.POSTGRES_USER,
+      password: process.env.POSTGRES_PASSWORD,
+      database: process.env.POSTGRES_DB,
+      synchronize: true,
+      entities: [path.join(__dirname, '**', '*.entity.{ts,js}')],
+    }),
     I18nModule.forRoot({
       fallbackLanguage: 'pt',
       loaderOptions: {
@@ -24,19 +38,11 @@ import * as path from 'path';
     }),
     TemplatesModule,
     SpacesModule,
-    ConfigModule.forRoot(),
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: 'localhost',
-      port: 5432,
-      username: process.env.POSTGRES_USER,
-      password: process.env.POSTGRES_PASSWORD,
-      database: process.env.POSTGRES_DB,
-      synchronize: true,
-      entities: [path.join(__dirname, '**', '*.entity.{ts,js}')],
-    }),
     BlueprintsModule,
     CertificatesModule,
+    SignaturesModule,
+    LogosModule,
+    ReduApiModule,
   ],
   controllers: [],
   providers: [],

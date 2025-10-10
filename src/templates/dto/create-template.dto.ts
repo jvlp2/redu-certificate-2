@@ -1,36 +1,101 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
-  IsArray,
-  IsString,
-  ValidateNested,
+  IsDate,
+  IsEnum,
   IsNotEmpty,
-  IsBase64,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
 } from 'class-validator';
+import { TransformJson } from 'src/decorators/transform-json.decorator';
 
-class SignatureDto {
+enum structureType {
+  COURSE = 'course',
+  ENVIRONMENT = 'environment',
+  SPACE = 'space',
+}
+
+class FrontData {
   @ApiProperty({ type: 'string' })
   @IsString()
   @IsNotEmpty()
-  name: string;
+  title: string;
 
   @ApiProperty({ type: 'string' })
   @IsString()
   @IsNotEmpty()
-  role: string;
+  organization: string;
+
+  @ApiProperty({ type: 'number' })
+  @IsNumber()
+  @IsNotEmpty()
+  workload: number;
+
+  @ApiProperty({ type: 'string', format: 'date-time' })
+  @IsDate()
+  @IsOptional()
+  startDate: Date;
+
+  @ApiProperty({ type: 'string', format: 'date-time' })
+  @IsDate()
+  @IsOptional()
+  endDate: Date;
 
   @ApiProperty({ type: 'string' })
   @IsString()
   @IsNotEmpty()
-  @IsBase64()
-  file: string;
+  info: string;
+}
+
+class BackData {
+  @ApiProperty({ type: 'string' })
+  @IsString()
+  @IsOptional()
+  title: string;
+
+  @ApiProperty({ type: 'string' })
+  @IsString()
+  @IsOptional()
+  subtitle: string;
+
+  @ApiProperty({ type: 'string' })
+  @IsString()
+  @IsOptional()
+  footer: string;
+
+  @ApiProperty({ type: 'string' })
+  @IsString()
+  @IsOptional()
+  content: string;
 }
 
 export class CreateTemplateDto {
-  @ApiProperty({ type: [SignatureDto] })
-  @Type(() => SignatureDto)
-  @ValidateNested({ each: true })
-  @IsArray()
+  @ApiProperty({ type: 'string', format: 'uuid' })
+  @IsUUID()
   @IsNotEmpty()
-  signatures: SignatureDto[];
+  blueprintId: string;
+
+  @ApiProperty({ type: 'string', enum: structureType })
+  @IsNotEmpty()
+  @IsEnum(structureType)
+  structureType: structureType;
+
+  @ApiProperty({ type: 'number' })
+  @IsNumber()
+  @IsNotEmpty()
+  structureId: number;
+
+  @ApiProperty({ type: FrontData })
+  @Type(() => FrontData)
+  @TransformJson(FrontData)
+  @IsNotEmpty()
+  frontData: FrontData;
+
+  @ApiProperty({ type: BackData })
+  @Type(() => BackData)
+  @TransformJson(BackData)
+  @IsNotEmpty()
+  backData: BackData;
 }
