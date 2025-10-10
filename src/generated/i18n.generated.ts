@@ -24,6 +24,7 @@ export type I18nTranslations = {
         "MAX_BYTES": string;
         "ENUM": string;
         "UUID": string;
+        "IS_BASE64": string;
     };
 };
 /* prettier-ignore */

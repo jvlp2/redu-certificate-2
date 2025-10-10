@@ -3,7 +3,7 @@ import { MaxFileSizeValidator as DefaultMaxFileSizeValidator } from '@nestjs/com
 
 export class MaxFileSizeValidator extends DefaultMaxFileSizeValidator {
   isValid(value: unknown): boolean {
-    if (!value) return false;
+    if (!value) return true;
 
     if (typeof value === 'object' && !('buffer' in value)) {
       return Object.values(value).every((file) => this.isValid(file));
