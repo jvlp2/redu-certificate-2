@@ -3,7 +3,7 @@ import { FileTypeValidator as DefaultFileTypeValidator } from '@nestjs/common';
 
 export class FileTypeValidator extends DefaultFileTypeValidator {
   async isValid(value: unknown): Promise<boolean> {
-    if (!value) return false;
+    if (!value) return true;
 
     if (typeof value === 'object' && !('buffer' in value)) {
       return (
@@ -21,12 +21,12 @@ export class FileTypeValidator extends DefaultFileTypeValidator {
       ).every((isValid) => isValid);
     }
 
-    console.log('value', value);
-    console.log('this.validationOptions', this.validationOptions);
-    console.log(
-      'super.isValid(value as IFile)',
-      await super.isValid(value as IFile),
-    );
+    // console.log('value', value);
+    // console.log('this.validationOptions', this.validationOptions);
+    // console.log(
+    //   'super.isValid(value as IFile)',
+    //   await super.isValid(value as IFile),
+    // );
 
     return super.isValid(value as IFile);
   }

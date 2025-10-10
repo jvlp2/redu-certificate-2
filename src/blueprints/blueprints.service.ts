@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { BlueprintFiles } from 'src/blueprints/blueprint-files.interface';
 import { CreateBlueprintDto } from 'src/blueprints/dto/create-blueprint.dto';
@@ -14,21 +14,6 @@ export class BlueprintsService {
     @InjectRepository(Blueprint)
     private blueprintRepository: Repository<Blueprint>,
   ) {}
-
-  private getFolderKey(id: string) {
-    return `blueprints/${id}`;
-  }
-
-  private getFileKey(id: string, file: string) {
-    return `${this.getFolderKey(id)}/${file}`;
-  }
-
-  private async uploadFile(file: Express.Multer.File, id: string) {
-    return this.spacesService.uploadFile(
-      file,
-      this.getFileKey(id, `file.fieldname`),
-    );
-  }
 
   async create(files: BlueprintFiles, body: CreateBlueprintDto) {
     const id = uuidv7();
@@ -47,5 +32,26 @@ export class BlueprintsService {
       );
       throw error;
     }
+  }
+
+  async findOne(id: string) {
+    const blueprint = await this.blueprintRepository.findOne({ where: { id } });
+    if (!blueprint) throw new NotFoundException('Blueprint not found');
+    return blueprint;
+  }
+
+  private getFolderKey(id: string) {
+    return `blueprints/${id}`;
+  }
+
+  private getFileKey(id: string, file: string) {
+    return `${this.getFolderKey(id)}/${file}`;
+  }
+
+  private async uploadFile(file: Express.Multer.File, id: string) {
+    return this.spacesService.uploadFile(
+      file,
+      this.getFileKey(id, `file.fieldname`),
+    );
   }
 }

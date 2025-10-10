@@ -1,5 +1,15 @@
 import { Blueprint } from 'src/blueprints/entities/blueprint.entity';
-import { Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
+import { Certificate } from 'src/certificates/entities/certificate.entity';
+import { Logo } from 'src/logos/entities/logo.entity';
+import { Signature } from 'src/signatures/entities/signature.entity';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  PrimaryColumn,
+} from 'typeorm';
 
 @Entity()
 export class Template {
@@ -9,4 +19,59 @@ export class Template {
   @ManyToOne(() => Blueprint, (blueprint) => blueprint.templates)
   @JoinColumn({ name: 'blueprintId' })
   blueprint: Blueprint;
+
+  @Column('varchar', { nullable: false })
+  structureType: string;
+
+  @Column('integer', { nullable: false })
+  strucureId: number;
+
+  @OneToMany(() => Certificate, (certificate) => certificate.template)
+  certificates: Certificate[];
+
+  @OneToMany(() => Signature, (signature) => signature.template, {
+    onDelete: 'CASCADE',
+  })
+  signatures: Signature[];
+
+  @OneToMany(() => Logo, (logo) => logo.template, {
+    onDelete: 'CASCADE',
+  })
+  logos: Logo[];
+
+  @Column('jsonb')
+  frontData: {
+    title: string;
+    organization: string;
+    workload: number;
+    startDate: Date;
+    endDate: Date;
+    info: string;
+  };
+
+  @Column('jsonb')
+  backData: {
+    title: string;
+    subtitle: string;
+    footer: string;
+    content: string;
+  };
+
+  @Column('jsonb')
+  metadata: {
+    numberOfPages: number;
+    back: {
+      hasTitle: boolean;
+      hasSubtitle: boolean;
+      hasFooter: boolean;
+    };
+  };
+
+  getSpacesKey() {
+    return `templates/${this.id}`;
+  }
+
+  getBackgroundImageSpacesKey() {
+    return `templates/${this.id}/backgroundImage`;
+  }
 }

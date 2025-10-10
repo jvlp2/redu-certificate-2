@@ -18,11 +18,11 @@ export class CertificatesController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.certificatesService.findOne(+id);
+    return this.certificatesService.findOne(id);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.certificatesService.remove(+id);
+    return this.certificatesService.remove(id);
   }
 }

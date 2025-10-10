@@ -16,5 +16,6 @@
   },
   "MAX_BYTES": "deve ter no máximo {maxBytes} bytes",
   "ENUM": "deve ser um dos seguintes valores: {values}",
-  "UUID": "deve ser um UUID válido"
+  "UUID": "deve ser um UUID válido",
+  "IS_BASE64": "deve ser base64 encoded"
 }

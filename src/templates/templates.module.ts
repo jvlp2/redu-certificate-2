@@ -4,10 +4,16 @@ import { TemplatesController } from './templates.controller';
 import { SpacesModule } from 'src/spaces/spaces.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Template } from 'src/templates/entities/template.entity';
-import { Blueprint } from 'src/blueprints/entities/blueprint.entity';
+import { BlueprintsModule } from 'src/blueprints/blueprints.module';
+import { AccessControlModule } from 'src/access-control/access-control.module';
 
 @Module({
-  imports: [SpacesModule, TypeOrmModule.forFeature([Template, Blueprint])],
+  imports: [
+    AccessControlModule,
+    SpacesModule,
+    TypeOrmModule.forFeature([Template]),
+    BlueprintsModule,
+  ],
   controllers: [TemplatesController],
   providers: [TemplatesService],
   exports: [TemplatesService],

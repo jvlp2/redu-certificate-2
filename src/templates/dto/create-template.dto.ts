@@ -2,13 +2,24 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsArray,
-  IsString,
-  ValidateNested,
+  IsDate,
+  IsEnum,
   IsNotEmpty,
-  IsBase64,
+  IsNumber,
+  IsNumberString,
+  IsOptional,
+  IsString,
+  IsUUID,
 } from 'class-validator';
+import { TransformJson } from 'src/decorators/transform-json.decorator';
 
-class SignatureDto {
+enum structureType {
+  COURSE = 'course',
+  ENVIRONMENT = 'environment',
+  SPACE = 'space',
+}
+
+class SignatureData {
   @ApiProperty({ type: 'string' })
   @IsString()
   @IsNotEmpty()
@@ -18,19 +29,80 @@ class SignatureDto {
   @IsString()
   @IsNotEmpty()
   role: string;
+}
 
-  @ApiProperty({ type: 'string' })
+class FrontData {
   @IsString()
   @IsNotEmpty()
-  @IsBase64()
-  file: string;
+  title: string;
+
+  @IsString()
+  @IsNotEmpty()
+  organization: string;
+
+  @IsNumber()
+  @IsNotEmpty()
+  workload: number;
+
+  @IsDate()
+  @IsOptional()
+  startDate: Date;
+
+  @IsDate()
+  @IsOptional()
+  endDate: Date;
+
+  @IsString()
+  @IsNotEmpty()
+  info: string;
+
+  @Type(() => SignatureData)
+  @TransformJson(SignatureData)
+  @IsArray()
+  @IsNotEmpty()
+  signatureData: SignatureData[];
+}
+
+class BackData {
+  @IsString()
+  @IsOptional()
+  title: string;
+
+  @IsString()
+  @IsOptional()
+  subtitle: string;
+
+  @IsString()
+  @IsOptional()
+  footer: string;
+
+  @IsString()
+  @IsOptional()
+  content: string;
 }
 
 export class CreateTemplateDto {
-  @ApiProperty({ type: [SignatureDto] })
-  @Type(() => SignatureDto)
-  @ValidateNested({ each: true })
+  @IsUUID()
+  @IsNotEmpty()
+  blueprintId: string;
+
+  @IsNotEmpty()
+  @IsEnum(structureType)
+  structureType: structureType;
+
+  @IsString()
+  @IsNumberString()
+  structureId: string;
+
+  @Type(() => FrontData)
+  @TransformJson(FrontData)
   @IsArray()
   @IsNotEmpty()
-  signatures: SignatureDto[];
+  frontData: FrontData;
+
+  @Type(() => BackData)
+  @TransformJson(BackData)
+  @IsArray()
+  @IsNotEmpty()
+  backData: BackData;
 }
