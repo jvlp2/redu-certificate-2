@@ -21,19 +21,33 @@ export class TemplatesService {
     return this.spacesService.uploadBase64('templates/test.png', base64Data);
   }
 
-  async create(body: CreateTemplateDto) {
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async create(body: CreateTemplateDto, files: Express.Multer.File[]) {
     console.log(body);
-    const sig = body.signatures[0].file;
-    const base64Data = sig.replace(/^data:image\/\w+;base64,/, '');
-    const buffer = Buffer.from(base64Data, 'base64');
-    const file = {
-      buffer,
-      originalname: 'test.png',
-      mimetype: 'image/png',
-      size: buffer.length,
-    } as Express.Multer.File;
-    const key = await this.spacesService.uploadFile(file, 'templates/test.png');
-    console.log(key);
+    console.log(files);
     return body;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async update(
+    id: string,
+    body: CreateTemplateDto,
+    files: Express.Multer.File[],
+  ) {
+    console.log(body);
+    console.log(files);
+    return body;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async delete(id: string) {
+    console.log(id);
+    return id;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async get(id: string) {
+    console.log(id);
+    return id;
   }
 }
