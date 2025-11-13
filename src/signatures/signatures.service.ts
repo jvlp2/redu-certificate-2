@@ -1,14 +1,11 @@
-import {
-  BadRequestException,
-  Injectable,
-  InternalServerErrorException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateSignatureDto } from './dto/create-signature.dto';
 import { S3Service } from 'src/s3/s3.service';
 import { v7 as uuidv7 } from 'uuid';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Signature } from 'src/signatures/entities/signature.entity';
+import { i18n } from 'src/i18n';
 
 @Injectable()
 export class SignaturesService {
@@ -28,9 +25,9 @@ export class SignaturesService {
     return this.s3
       .uploadFile(file, signature.getSpacesKey())
       .then(() => this.signatureRepository.save(signature))
-      .catch(async () => {
+      .catch(async (error) => {
         await this.s3.deleteFile(signature.getSpacesKey());
-        throw new InternalServerErrorException();
+        throw error;
       });
   }
 
@@ -44,6 +41,6 @@ export class SignaturesService {
     });
     if (count < 3) return;
 
-    throw new BadRequestException('Template must have at most 3 signatures');
+    throw new BadRequestException(i18n.t('validation.MAX_SIGNATURES'));
   }
 }

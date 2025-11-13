@@ -27,7 +27,7 @@ export class SignaturesController {
     @UploadedFile(
       FileValidationFactory.createValidationPipe({
         fileIsRequired: true,
-        maxSize: FileValidationFactory.convertToBytes(10, 'mb'),
+        maxSize: FileValidationFactory.toBytes(10, 'mb'),
         fileType: 'image/*',
       }),
     )

@@ -1,4 +1,6 @@
 {
+  "MAX_LOGOS": "O template deve ter no máximo 3 logos",
+  "MAX_SIGNATURES": "O template deve ter entre 1 e 3 assinaturas",
   "ARRAY": "deve ser um array",
   "STRING": "deve ser um string",
   "DATE": "deve ser uma data",

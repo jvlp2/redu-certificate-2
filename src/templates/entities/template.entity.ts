@@ -15,18 +15,6 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-export type GradeType = 'exercise' | 'gradeGroup' | 'structure';
-export type Requirements = {
-  afterDate?: Date;
-  progress?: number;
-  presence?: number;
-  grade?: {
-    type: GradeType;
-    id?: number;
-    value: number;
-  };
-};
-
 export type S3KeyOptions = {
   kind: S3KeyKind;
   format?: S3KeyFormat;
@@ -39,6 +27,70 @@ export type S3KeyKind =
   | 'frontBackground'
   | 'backBackground';
 export type S3KeyFormat = 'html' | 'png' | 'pdf';
+
+export type Grade = { type: GradeType; id?: number; value: number };
+export enum GradeType {
+  EXERCISE = 'exercise',
+  GRADE_GROUP = 'gradeGroup',
+  STRUCTURE = 'structure',
+}
+
+export type EnrollmentTime = { type: EnrollmentTimeType; value: number };
+export enum EnrollmentTimeType {
+  HOURS = 'hours',
+  DAYS = 'days',
+  WEEKS = 'weeks',
+  MONTHS = 'months',
+  YEARS = 'years',
+}
+
+export type Requirements = {
+  afterDate?: Date;
+  progress?: number;
+  presence?: number;
+  enrollmentTime?: EnrollmentTime;
+  grade?: Grade;
+};
+
+export type Front = {
+  title: string;
+  organization: string;
+  workload: number;
+  sumPresenceWorkload: boolean;
+  startDate: Date;
+  endDate: Date;
+  info: string;
+};
+
+export enum BackContentType {
+  COURSE = 'course',
+  SPACE = 'space',
+  SUBJECT = 'subject',
+  LECTURE = 'lecture',
+  CUSTOM = 'custom',
+}
+export type BackContent =
+  | {
+      type: BackContentType.CUSTOM;
+      value: string;
+    }
+  | {
+      type: Exclude<BackContentType, BackContentType.CUSTOM>;
+    };
+export type Back = {
+  title: string;
+  subtitle: string;
+  footer: string;
+  content: BackContent;
+};
+
+export type Metadata = {
+  hasBackPage: boolean;
+  customBackground: {
+    front: boolean;
+    back: boolean;
+  };
+};
 
 @Entity()
 export class Template {
@@ -72,35 +124,16 @@ export class Template {
   logos: Logo[];
 
   @Column('jsonb')
-  frontData: {
-    title: string;
-    organization: string;
-    workload: number;
-    startDate: Date;
-    endDate: Date;
-    info: string;
-  };
+  front: Front;
 
   @Column('jsonb')
-  backData: {
-    title: string;
-    subtitle: string;
-    footer: string;
-    content: string;
-  };
+  back: Back;
 
   @Column('jsonb')
   requirements: Requirements;
 
   @Column('jsonb')
-  metadata: {
-    hasBackPage: boolean;
-    hasCustomBackContent: boolean;
-    customBackground: {
-      front: boolean;
-      back: boolean;
-    };
-  };
+  metadata: Metadata;
 
   @CreateDateColumn({
     type: 'timestamp with time zone',

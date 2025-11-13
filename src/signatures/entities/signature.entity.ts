@@ -13,10 +13,6 @@ export class Signature {
   @Column('uuid')
   templateId: string;
 
-  // TODO: testar se isso funciona
-  // @RelationId((s: Signature) => s.template)
-  // templateId: string;
-
   @Column('varchar')
   name: string;
 

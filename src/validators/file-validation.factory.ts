@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   FileTypeValidatorOptions,
   FileValidator,
   MaxFileSizeValidatorOptions,
@@ -8,10 +7,11 @@ import {
 import { FileTypeValidator } from './file-type.validator';
 import { MaxFileSizeValidator } from './max-file-size.validator';
 
-export type FileValidationOptions = MaxFileSizeValidatorOptions &
-  FileTypeValidatorOptions & {
-    fileIsRequired?: boolean;
-  };
+export type FileValidationOptions = Partial<
+  MaxFileSizeValidatorOptions & FileTypeValidatorOptions
+> & {
+  fileIsRequired?: boolean;
+};
 
 export class FileValidationFactory {
   static createValidationPipe(options: FileValidationOptions): ParseFilePipe {
@@ -19,17 +19,21 @@ export class FileValidationFactory {
     const validators: FileValidator[] = [];
 
     if (maxSize) {
-      validators.push(new MaxFileSizeValidator(options));
+      validators.push(
+        new MaxFileSizeValidator(options as MaxFileSizeValidatorOptions),
+      );
     }
 
     if (fileType) {
-      validators.push(new FileTypeValidator(options));
+      validators.push(
+        new FileTypeValidator(options as FileTypeValidatorOptions),
+      );
     }
 
     return new ParseFilePipe({ fileIsRequired, validators });
   }
 
-  static convertToBytes(size: number, unit: 'kb' | 'mb' | 'gb' = 'mb'): number {
+  static toBytes(size: number, unit: 'kb' | 'mb' | 'gb' = 'mb') {
     switch (unit) {
       case 'kb':
         return size * 1024;
@@ -37,8 +41,6 @@ export class FileValidationFactory {
         return size * 1024 * 1024;
       case 'gb':
         return size * 1024 * 1024 * 1024;
-      default:
-        throw new BadRequestException('Invalid file size unit');
     }
   }
 }

@@ -1,143 +1,217 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
-  IsDate,
+  IsBoolean,
   IsEnum,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
+  ValidateNested,
+  IsDate,
 } from 'class-validator';
 import { TransformJson } from 'src/decorators/transform-json.decorator';
+import { i18n } from 'src/i18n';
+import {
+  BackContentType,
+  EnrollmentTimeType,
+  GradeType,
+} from 'src/templates/entities/template.entity';
 
 class Grade {
   @ApiProperty({
     type: 'string',
-    enum: ['exercise', 'gradeGroup', 'structure'],
+    enum: GradeType,
   })
-  @IsEnum(['exercise', 'gradeGroup', 'structure'])
-  @IsNotEmpty()
-  type: 'exercise' | 'gradeGroup' | 'structure';
+  @IsEnum(GradeType, {
+    message: i18n.validationMessage('validation.ENUM', {
+      values: Object.values(GradeType).join(', '),
+    }),
+  })
+  @IsNotEmpty({ message: i18n.validationMessage('validation.NOT_EMPTY') })
+  type: GradeType;
 
   @ApiProperty({ type: 'number' })
-  @IsNumber()
+  @IsNumber(
+    { allowNaN: false, allowInfinity: false },
+    { message: i18n.validationMessage('validation.NUMBER') },
+  )
   @IsOptional()
   id?: number;
 
   @ApiProperty({ type: 'number' })
-  @IsNumber()
-  @IsNotEmpty()
+  @IsNumber(
+    { allowNaN: false, allowInfinity: false },
+    { message: i18n.validationMessage('validation.NUMBER') },
+  )
+  @IsNotEmpty({ message: i18n.validationMessage('validation.NOT_EMPTY') })
+  value: number;
+}
+
+class EnrollmentTime {
+  @ApiProperty({
+    type: 'string',
+    enum: EnrollmentTimeType,
+  })
+  @IsEnum(EnrollmentTimeType, {
+    message: i18n.validationMessage('validation.ENUM', {
+      values: Object.values(EnrollmentTimeType).join(', '),
+    }),
+  })
+  @IsNotEmpty({ message: i18n.validationMessage('validation.NOT_EMPTY') })
+  type: EnrollmentTimeType;
+
+  @ApiProperty({ type: 'number' })
+  @IsNumber(
+    { allowNaN: false, allowInfinity: false },
+    { message: i18n.validationMessage('validation.NUMBER') },
+  )
+  @IsNotEmpty({ message: i18n.validationMessage('validation.NOT_EMPTY') })
   value: number;
 }
 
 class Requirements {
   @ApiProperty({ type: 'string', format: 'date-time' })
-  @IsDate()
+  @Type(() => Date)
+  @IsDate({ message: i18n.validationMessage('validation.DATE') })
   @IsOptional()
   afterDate?: Date;
 
   @ApiProperty({ type: 'number' })
-  @IsNumber()
+  @IsNumber(
+    { allowNaN: false, allowInfinity: false },
+    { message: i18n.validationMessage('validation.NUMBER') },
+  )
   @IsOptional()
   presence?: number;
 
   @ApiProperty({ type: 'number' })
-  @IsNumber()
+  @IsNumber(
+    { allowNaN: false, allowInfinity: false },
+    { message: i18n.validationMessage('validation.NUMBER') },
+  )
   @IsOptional()
   progress?: number;
 
   @ApiProperty({ type: Grade })
   @Type(() => Grade)
   @TransformJson(Grade)
-  @IsNotEmpty()
+  @IsOptional()
+  @ValidateNested()
   grade: Grade;
+
+  @ApiProperty({ type: EnrollmentTime })
+  @Type(() => EnrollmentTime)
+  @TransformJson(EnrollmentTime)
+  @IsOptional()
+  @ValidateNested()
+  enrollmentTime: EnrollmentTime;
 }
 
-class FrontData {
+class Front {
   @ApiProperty({ type: 'string' })
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: i18n.validationMessage('validation.STRING') })
+  @IsOptional()
   title: string;
 
   @ApiProperty({ type: 'string' })
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: i18n.validationMessage('validation.STRING') })
+  @IsOptional()
   organization: string;
 
   @ApiProperty({ type: 'number' })
-  @IsNumber()
-  @IsNotEmpty()
+  @IsNumber(
+    { allowNaN: false, allowInfinity: false },
+    { message: i18n.validationMessage('validation.NUMBER') },
+  )
+  @IsOptional()
   workload: number;
 
-  @ApiProperty({ type: 'string', format: 'date-time' })
-  @IsDate()
+  @ApiProperty({ type: 'boolean' })
+  @IsBoolean()
   @IsOptional()
-  startDate: Date;
+  sumPresenceWorkload: boolean;
 
   @ApiProperty({ type: 'string', format: 'date-time' })
-  @IsDate()
+  @Type(() => Date)
+  @IsDate({ message: i18n.validationMessage('validation.DATE') })
   @IsOptional()
-  endDate: Date;
+  startDate?: Date;
+
+  @ApiProperty({ type: 'string', format: 'date-time' })
+  @Type(() => Date)
+  @IsDate({ message: i18n.validationMessage('validation.DATE') })
+  @IsOptional()
+  endDate?: Date;
 
   @ApiProperty({ type: 'string' })
-  @IsString()
+  @IsString({ message: i18n.validationMessage('validation.STRING') })
   @IsNotEmpty()
   info: string;
 }
 
-class BackData {
+class BackContent {
+  @ApiProperty({
+    type: 'string',
+    enum: BackContentType,
+  })
+  @IsEnum(BackContentType, {
+    message: i18n.validationMessage('validation.ENUM', {
+      values: Object.values(BackContentType).join(', '),
+    }),
+  })
+  @IsNotEmpty({ message: i18n.validationMessage('validation.NOT_EMPTY') })
+  type: BackContentType;
+
   @ApiProperty({ type: 'string' })
-  @IsString()
+  @IsString({ message: i18n.validationMessage('validation.STRING') })
+  @IsOptional()
+  value: string;
+}
+
+class Back {
+  @ApiProperty({ type: 'string' })
+  @IsString({ message: i18n.validationMessage('validation.STRING') })
   @IsOptional()
   title: string;
 
   @ApiProperty({ type: 'string' })
-  @IsString()
+  @IsString({ message: i18n.validationMessage('validation.STRING') })
   @IsOptional()
   subtitle: string;
 
   @ApiProperty({ type: 'string' })
-  @IsString()
+  @IsString({ message: i18n.validationMessage('validation.STRING') })
   @IsOptional()
   footer: string;
 
-  @ApiProperty({ type: 'string' })
-  @IsString()
-  @IsOptional()
-  content: string;
+  @ApiProperty({ type: BackContent })
+  @Type(() => BackContent)
+  @TransformJson(BackContent)
+  @IsNotEmpty({ message: i18n.validationMessage('validation.NOT_EMPTY') })
+  @ValidateNested()
+  content: BackContent;
 }
 
 export class CreateTemplateDto {
-  // @ApiProperty({ type: 'string', format: 'uuid' })
-  // @IsUUID()
-  // @IsNotEmpty()
-  // blueprintId: string;
+  @ApiProperty({ type: Front, required: false })
+  @Type(() => Front)
+  @TransformJson(Front)
+  @IsOptional()
+  @ValidateNested()
+  front?: Partial<Front>;
 
-  // @ApiProperty({ type: 'string', enum: structureType })
-  // @IsNotEmpty()
-  // @IsEnum(structureType)
-  // structureType: structureType;
+  @ApiProperty({ type: Back, required: false })
+  @Type(() => Back)
+  @TransformJson(Back)
+  @IsOptional()
+  @ValidateNested()
+  back?: Partial<Back>;
 
-  // @ApiProperty({ type: 'number' })
-  // @IsNumber()
-  // @IsNotEmpty()
-  // structureId: number;
-
-  @ApiProperty({ type: FrontData })
-  @Type(() => FrontData)
-  @TransformJson(FrontData)
-  @IsNotEmpty()
-  frontData: FrontData;
-
-  @ApiProperty({ type: BackData })
-  @Type(() => BackData)
-  @TransformJson(BackData)
-  @IsNotEmpty()
-  backData: BackData;
-
-  @ApiProperty({ type: Requirements })
+  @ApiProperty({ type: Requirements, required: false })
   @Type(() => Requirements)
   @TransformJson(Requirements)
-  @IsNotEmpty()
-  requirements: Requirements;
+  @IsOptional()
+  @ValidateNested()
+  requirements?: Partial<Requirements>;
 }

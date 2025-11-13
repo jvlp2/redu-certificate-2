@@ -29,6 +29,11 @@ export class S3Service {
   }
 
   async getFile(key: string) {
+    console.log('getFile', {
+      key,
+      bucket: this.bucket,
+    });
+
     const command = new GetObjectCommand({
       Bucket: this.bucket,
       Key: key,
@@ -54,37 +59,17 @@ export class S3Service {
     return key;
   }
 
-  async uploadString(
-    contents: string,
-    key: string,
-    contentType = 'text/plain',
-  ) {
+  async uploadString(content: string, key: string, contentType = 'text/plain') {
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: key,
-      Body: Buffer.from(contents, 'utf8'),
+      Body: Buffer.from(content, 'utf8'),
       ContentType: contentType,
       ACL: 'private',
     });
     await this.client.send(command);
     return key;
   }
-
-  async uploadBase64(key: string, base64: string, contentType = 'image/png') {
-    const command = new PutObjectCommand({
-      Bucket: this.bucket,
-      Key: key,
-      Body: Buffer.from(base64, 'base64'),
-      ContentType: contentType,
-      ACL: 'private',
-    });
-    await this.client.send(command);
-    return key;
-  }
-
-  // getFileUrl(key: string) {
-  //   return `https://${this.bucket}.${this.region}.digitaloceanspaces.com/${key}`;
-  // }
 
   async getPresignedUrl(key: string, expiresIn: number = 60 * 5) {
     const command = new GetObjectCommand({

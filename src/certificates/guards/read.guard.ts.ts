@@ -5,27 +5,28 @@ import {
   ReduAuthorizationService,
   Model,
 } from 'src/redu-api/authorization.service';
-import { getStructureParams } from 'src/templates/guards/utils';
-import { TemplatesService } from 'src/templates/templates.service';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
-export class ManageTemplateGuard implements CanActivate {
+export class ManageCertificateGuard implements CanActivate {
   constructor(
     private readonly authorizationService: ReduAuthorizationService,
-    private readonly templatesService: TemplatesService,
+    private readonly usersService: UsersService,
   ) {}
+
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
-    const { structureType, structureId } = await getStructureParams(
-      request,
-      this.templatesService,
-    );
+    const { id } = request.params as { id: string };
+    const { reduUserId } = await this.usersService.findOneBy({
+      where: { certificates: { id } },
+    });
 
     await this.authorizationService.authorize({
       abilityAction: AbilityAction.MANAGE,
-      model: structureType as Model,
-      id: structureId.toString(),
+      model: Model.USER,
+      id: reduUserId.toString(),
     });
+
     return true;
   }
 }

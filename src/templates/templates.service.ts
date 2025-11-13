@@ -9,7 +9,7 @@ import { S3Service } from 'src/s3/s3.service';
 import { StructureType } from 'src/structures/entities/structure.entity';
 import { StructuresService } from 'src/structures/structures.service';
 import { CreateTemplateDto } from 'src/templates/dto/create-template.dto';
-import { Template } from 'src/templates/entities/template.entity';
+import { Back, Template } from 'src/templates/entities/template.entity';
 import {
   DataSource,
   FindOneOptions,
@@ -17,8 +17,7 @@ import {
   Repository,
 } from 'typeorm';
 import { v7 as uuidv7 } from 'uuid';
-
-const BACK_CONTENT = ['course', 'space', 'subject', 'lecture'];
+import { i18n } from 'src/i18n';
 
 @Injectable()
 export class TemplatesService {
@@ -33,20 +32,15 @@ export class TemplatesService {
   ) {}
 
   async finish(id: string) {
-    const template = await this.findOne(id, {
-      logos: true,
-      signatures: true,
-    });
+    const template = await this.findOne(id, { logos: true, signatures: true });
     if (template.finished) return;
 
     if (template.logos.length > 3)
-      throw new BadRequestException('Template must have at most 3 logos');
+      throw new BadRequestException(i18n.t('validation.MAX_LOGOS'));
     if (template.signatures.length < 1 || template.signatures.length > 3)
-      throw new BadRequestException(
-        'Template must have between 1 and 3 signatures',
-      );
+      throw new BadRequestException(i18n.t('validation.MAX_SIGNATURES'));
 
-    return await this.templateRepository.update(id, {
+    await this.templateRepository.update(id, {
       finished: true,
     });
   }
@@ -58,29 +52,13 @@ export class TemplatesService {
     frontBackground: Express.Multer.File,
     backBackground: Express.Multer.File,
   ) {
-    const client = await this.clientService.getClient();
-    const blueprint = client.blueprint;
-    const structure = await this.structureService.findOrCreate(
+    const template = await this.findOrInitialize(
+      body,
       structureType,
       structureId,
+      frontBackground,
+      backBackground,
     );
-    const template = this.templateRepository.create({
-      ...body,
-      id: uuidv7(),
-      blueprint,
-      structure,
-      metadata: {
-        hasBackPage: Boolean(body.backData.content),
-        customBackground: {
-          front: Boolean(frontBackground),
-          back: Boolean(backBackground),
-        },
-        hasCustomBackContent: Boolean(
-          body.backData?.content &&
-            !BACK_CONTENT.includes(body.backData.content),
-        ),
-      },
-    });
 
     if (!frontBackground && !backBackground)
       return this.templateRepository.save(template);
@@ -108,10 +86,16 @@ export class TemplatesService {
     const template = await this.findOne(id);
 
     if (!frontBackground && !backBackground) {
-      await this.templateRepository.update(template.id, body);
+      await this.templateRepository.update(template.id, {
+        ...body,
+        back: body.back as Back,
+      });
     } else {
       await this.dataSource.transaction(async (entityManager) => {
-        await entityManager.update(Template, template.id, body);
+        await entityManager.update(Template, template.id, {
+          ...body,
+          back: body.back as Back,
+        });
         await this.uploadBackground(template, 'front', frontBackground);
         await this.uploadBackground(template, 'back', backBackground);
       });
@@ -129,13 +113,56 @@ export class TemplatesService {
     });
   }
 
+  async findOrInitialize(
+    body: CreateTemplateDto,
+    structureType: StructureType,
+    structureId: number,
+    frontBackground: Express.Multer.File,
+    backBackground: Express.Multer.File,
+  ) {
+    try {
+      const template = await this.findOneByStructure(
+        structureType,
+        structureId,
+      );
+      await this.templateRepository.update(template.id, {
+        ...body,
+        back: body.back as Back,
+      });
+      return template;
+    } catch (error) {
+      if (!(error instanceof NotFoundException)) throw error;
+
+      const blueprint = await this.clientService.getDefaultBlueprint();
+      const structure = await this.structureService.findOrCreate(
+        structureType,
+        structureId,
+      );
+
+      return this.templateRepository.create({
+        ...body,
+        id: uuidv7(),
+        blueprint,
+        structure,
+        metadata: {
+          hasBackPage: Boolean(body.back?.content),
+          customBackground: {
+            front: Boolean(frontBackground),
+            back: Boolean(backBackground),
+          },
+        },
+      });
+    }
+  }
+
   async findOne(id: string, relations?: FindOptionsRelations<Template>) {
     return this.findOneBy({ where: { id }, relations });
   }
 
   async findOneBy(options: FindOneOptions<Template>) {
     const template = await this.templateRepository.findOne(options);
-    if (!template) throw new NotFoundException('Template not found');
+    if (!template)
+      throw new NotFoundException(i18n.t('error.NOT_FOUND.TEMPLATE'));
     return template;
   }
 
@@ -143,6 +170,7 @@ export class TemplatesService {
     structureType: StructureType,
     structureId: number,
     options?: {
+      finished?: boolean;
       relations?: FindOptionsRelations<Template>;
     },
   ) {
@@ -152,6 +180,7 @@ export class TemplatesService {
           structureType,
           structureId,
         },
+        finished: options?.finished,
       },
       relations: options?.relations,
     });

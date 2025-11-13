@@ -3,28 +3,23 @@ import {
   Controller,
   UseGuards,
   Post,
-  UploadedFiles,
   Param,
   Patch,
 } from '@nestjs/common';
 import { BlueprintsService } from './blueprints.service';
-import {
-  ApiBearerAuth,
-  ApiBody,
-  ApiConsumes,
-  ApiSecurity,
-} from '@nestjs/swagger';
-import { BlueprintFilesDecorator } from './blueprint-files.decorator';
+import { ApiBody, ApiConsumes } from '@nestjs/swagger';
+import { BlueprintFilesInterceptor } from './decorators/blueprint-files-interceptor.decorator';
 import { CreateBlueprintDto } from 'src/blueprints/dto/create-blueprint.dto';
 import { BlueprintSchema } from 'src/blueprints/dto/blueprint-schema';
 import { ManageBlueprintGuard } from './guards/manage.guard';
 import { ClientService } from 'src/client/client.service';
-import { type BlueprintFiles } from 'src/blueprints/blueprint-files.interface';
-import { FileValidationFactory } from 'src/validators/file-validation.factory';
+import { BlueprintGuard } from 'src/blueprints/guards/blueprint-guard.decorator';
+import { AbilityAction } from 'src/redu-api/authorization.service';
+import { BlueprintFiles } from 'src/blueprints/decorators/blueprint-files.decorator';
+import { ApiSecurity } from 'src/decorators/swagger';
 
-@ApiSecurity('X-Client-Name')
-@ApiBearerAuth()
 @Controller('blueprints')
+@ApiSecurity()
 export class BlueprintsController {
   constructor(
     private readonly blueprintsService: BlueprintsService,
@@ -32,20 +27,13 @@ export class BlueprintsController {
   ) {}
 
   @Post()
-  @BlueprintFilesDecorator()
+  @BlueprintFilesInterceptor()
   @ApiConsumes('multipart/form-data')
   @ApiBody({ type: BlueprintSchema })
-  @UseGuards(ManageBlueprintGuard)
+  @BlueprintGuard(AbilityAction.MANAGE)
   async create(
-    @UploadedFiles(
-      FileValidationFactory.createValidationPipe({
-        fileIsRequired: true,
-        maxSize: FileValidationFactory.convertToBytes(10, 'mb'),
-        fileType: 'text/html',
-      }),
-    )
-    files: BlueprintFiles,
     @Body() body: CreateBlueprintDto,
+    @BlueprintFiles() files: BlueprintFiles,
   ) {
     return this.blueprintsService.create(files, body);
   }

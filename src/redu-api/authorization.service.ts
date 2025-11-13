@@ -1,5 +1,6 @@
 import { ForbiddenException, Injectable, Scope } from '@nestjs/common';
-import { ReduApiService } from 'src/redu-api/redu-api.service';
+import { i18n } from 'src/i18n';
+import { ReduApiError, ReduApiService } from 'src/redu-api/redu-api.service';
 
 export type AuthorizeParams = {
   abilityAction: AbilityAction;
@@ -34,8 +35,9 @@ export class ReduAuthorizationService {
     console.log('authorize', authorizeParams);
     try {
       await this.reduApiService.get(this.buildUrl(authorizeParams));
-    } catch {
-      throw new ForbiddenException('Access denied');
+    } catch (error) {
+      if (!(error instanceof ReduApiError)) throw error;
+      throw new ForbiddenException(i18n.t('error.ACCESS_DENIED'));
     }
   }
 

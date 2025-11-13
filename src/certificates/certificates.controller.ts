@@ -1,31 +1,23 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Param,
-  Delete,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Post, Param, Delete } from '@nestjs/common';
 import { CertificatesService } from './certificates.service';
-import { ApiBearerAuth, ApiParam, ApiSecurity } from '@nestjs/swagger';
-import { CreateCertificateGuard } from './guards/create.guard';
-import { ManageCertificateGuard } from './guards/manage.guard';
 import { StructureType } from 'src/structures/entities/structure.entity';
+import { CertificateGuard } from 'src/certificates/guards/certificate.guard';
+import { AbilityAction } from 'src/redu-api/authorization.service';
+import { ApiSecurity, ApiStructureTypeIdParam } from 'src/decorators/swagger';
 
 @Controller('certificates')
-@ApiSecurity('X-Client-Name')
-@ApiBearerAuth()
+@ApiSecurity()
 export class CertificatesController {
   constructor(private readonly certificatesService: CertificatesService) {}
 
+  @Get('')
+  findAll() {
+    return this.certificatesService.findAll();
+  }
+
   @Post(':structureType/:structureId')
-  @UseGuards(CreateCertificateGuard)
-  @ApiParam({
-    name: 'structureType',
-    type: 'string',
-    enum: ['environment', 'course', 'space'],
-  })
-  @ApiParam({ name: 'structureId', type: 'number' })
+  @CertificateGuard(AbilityAction.CREATE)
+  @ApiStructureTypeIdParam()
   async create(
     @Param('structureType') structureType: StructureType,
     @Param('structureId') structureId: number,
@@ -33,25 +25,9 @@ export class CertificatesController {
     return this.certificatesService.create(structureType, structureId);
   }
 
-  @Get('')
-  findAll() {
-    return this.certificatesService.findAll();
-  }
-
-  @Get('validate/:validationCode')
-  findOneByValidationCode(@Param('validationCode') validationCode: string) {
-    return this.certificatesService.findOneBy({
-      where: { validationCode },
-    });
-  }
-
   @Get(':structureType/:structureId')
-  @ApiParam({
-    name: 'structureType',
-    type: 'string',
-    enum: ['environment', 'course', 'space'],
-  })
-  @ApiParam({ name: 'structureId', type: 'number' })
+  @CertificateGuard(AbilityAction.READ)
+  @ApiStructureTypeIdParam()
   async findOneByStructure(
     @Param('structureType') structureType: StructureType,
     @Param('structureId') structureId: number,
@@ -62,8 +38,13 @@ export class CertificatesController {
     );
   }
 
+  @Get('validate/:validationCode')
+  findOneByValidationCode(@Param('validationCode') validationCode: string) {
+    return this.certificatesService.getValidationInfo(validationCode);
+  }
+
   @Delete(':id')
-  @UseGuards(ManageCertificateGuard)
+  @CertificateGuard(AbilityAction.MANAGE)
   remove(@Param('id') id: string) {
     return this.certificatesService.remove(id);
   }

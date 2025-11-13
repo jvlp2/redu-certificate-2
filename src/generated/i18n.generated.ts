@@ -5,7 +5,32 @@
 import { Path } from "nestjs-i18n";
 /* prettier-ignore */
 export type I18nTranslations = {
+    "error": {
+        "ACCESS_DENIED": string;
+        "AUTHORIZATION_HEADER_REQUIRED": string;
+        "INVALID_AUTHORIZATION_HEADER": string;
+        "CLIENT_NAME_HEADER_REQUIRED": string;
+        "INVALID_CLIENT_NAME": string;
+        "INVALID_FILE_TYPE": string;
+        "TEMPLATE": {
+            "NOT_FINISHED": string;
+        };
+        "NOT_FOUND": {
+            "M": string;
+            "F": string;
+            "BLUEPRINT": string;
+            "TEMPLATE": string;
+            "CERTIFICATE": string;
+            "SIGNATURE": string;
+            "LOGO": string;
+            "STRUCTURE": string;
+            "USER": string;
+            "CLIENT": string;
+        };
+    };
     "validation": {
+        "MAX_LOGOS": string;
+        "MAX_SIGNATURES": string;
         "ARRAY": string;
         "STRING": string;
         "DATE": string;

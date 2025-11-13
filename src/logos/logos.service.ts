@@ -5,6 +5,7 @@ import { v7 as uuidv7 } from 'uuid';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Logo } from 'src/logos/entities/logo.entity';
+import { i18n } from 'src/i18n';
 
 @Injectable()
 export class LogosService {
@@ -38,6 +39,6 @@ export class LogosService {
     const count = await this.logoRepository.count({ where: { templateId } });
     if (count < 3) return;
 
-    throw new BadRequestException('Template must have at most 3 logos');
+    throw new BadRequestException(i18n.t('validation.MAX_LOGOS'));
   }
 }

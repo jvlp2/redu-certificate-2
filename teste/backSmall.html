@@ -33,12 +33,9 @@
     .content {
       height: 100%;
       display: flex;
-      /* width: 647px;
-      height: 594px; */
       flex-direction: column;
       align-items: flex-start;
       justify-content: space-between;
-      /* gap: 64px; */
     }
 
     .top {
@@ -53,8 +50,6 @@
       display: flex;
       flex-direction: column;
       color: #4B4B4B;
-      /* justify-content: space-between; */
-
       gap: 32px;
 
       p {
@@ -93,7 +88,6 @@
 
       p {
         color: #4B4B4B;
-
         font-size: 11.905px;
         font-style: normal;
         font-weight: 400;
@@ -110,7 +104,6 @@
       gap: 6px;
       margin-left: auto;
 
-
       img {
         width: 64px;
         height: 64px;
@@ -122,33 +115,29 @@
 <body>
   <div class="background">
     <div class="content">
-      <div class="top">
-        {{#each logos}}
-        <img src="{{{this.url}}}" alt="Logo">
-        {{/each}}
-      </div>
-
+      <h1>{{title}}</h1>
+      <h2>{{subtitle}}</h2>
 
       <div class="main-content">
-        <h1>{{title}}</h1>
 
-        <p>
-          {{{info}}}
-        </p>
-
-        <div class="signatures">
-          {{#each signatures}}
-          <div>
-            <img src="{{{this.url}}}" alt="Assinatura">
-            <p>{{this.name}}<br><small>{{this.role}}<br>{{this.organization}}</small></p>
-          </div>
+        {{#if content.children}}
+        <ol>
+          {{#each content.children}}
+          <li>
+            <span style="font-weight: bold;">{{this.name}}</span>
+            <span>{{this.description}}</span>
+          </li>
           {{/each}}
-        </div>
+        </ol>
+        <p>{{this.name}}</p>
+        {{else}}
+        <p>{{content}}</p>
+        {{/if}}
       </div>
 
       <div class="footer">
         <p>
-          Documento emitido em {{date}} pela {{organizationName}} - {{platformName}}
+          Documento emitido em {{currentDate}} pela {{organization}}
         </p>
         <div class="qrcode">
           <img src="{{{qrcode}}}" alt="QR Code">

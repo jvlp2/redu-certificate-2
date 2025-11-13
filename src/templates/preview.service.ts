@@ -11,6 +11,25 @@ import {
 } from 'src/templates/entities/template.entity';
 import { TemplatesService } from 'src/templates/templates.service';
 
+const MARKER_MAP = {
+  startDate: '[DATA DE INÍCIO]',
+  endDate: '[DATA DE TÉRMINO]',
+  workload: '[CARGA HORÁRIA]',
+  platform: '[NOME DA PLATAFORMA]',
+  user: {
+    name: '[NOME COMPLETO DO ESTUDANTE]',
+    cpf: '[CPF]',
+  },
+  structure: {
+    name: '[NOME DA ATIVIDADE]',
+  },
+  requirements: {
+    grade: {
+      value: '[NOTA MÍNIMA PARA APROVAÇÃO]',
+    },
+  },
+} as const;
+
 @Injectable({ scope: Scope.REQUEST })
 export class PreviewService {
   private template: Template;
@@ -32,58 +51,60 @@ export class PreviewService {
     const files = await this.certificateBuilder.build(
       this.template,
       '0000000000',
+      { markerMap: MARKER_MAP },
     );
 
-    await this.uploadPreviewFiles(files);
-    return this.getPreviewUrls();
+    await this.uploadPreview(files);
+    return this.getUrls();
   }
 
-  private async uploadPreviewFiles(files: {
+  private async uploadPreview(files: {
     front: Page;
-    back: Page;
+    back: Page | undefined;
     merged: Express.Multer.File;
   }) {
     await Promise.all([
-      this.s3.uploadFile(files.front.pdf, this.getKey('front', 'pdf')),
-      this.s3.uploadFile(files.front.png, this.getKey('front', 'png')),
-      this.s3.uploadFile(files.back.pdf, this.getKey('back', 'pdf')),
-      this.s3.uploadFile(files.back.png, this.getKey('back', 'png')),
+      this.uploadPage('front', files.front),
+      this.uploadPage('back', files.back),
       this.s3.uploadFile(files.merged, this.getKey('merged', 'pdf')),
     ]);
   }
 
-  private async getPreviewUrls() {
-    const [
-      frontHtml,
-      frontPdf,
-      frontPng,
-      backHtml,
-      backPdf,
-      backPng,
-      mergedPdf,
-    ] = await Promise.all([
+  private async uploadPage(kind: S3KeyKind, page?: Page) {
+    if (!page) return;
+
+    await Promise.all([
+      this.s3.uploadFile(page.pdf, this.getKey(kind, 'pdf')),
+      this.s3.uploadFile(page.png, this.getKey(kind, 'png')),
+      this.s3.uploadString(page.html, this.getKey(kind, 'html'), 'text/html'),
+    ]);
+  }
+
+  private async getUrls() {
+    const [frontHtml, frontPdf, frontPng, mergedPdf] = await Promise.all([
       this.s3.getPresignedUrl(this.getKey('front', 'html')),
       this.s3.getPresignedUrl(this.getKey('front', 'pdf')),
       this.s3.getPresignedUrl(this.getKey('front', 'png')),
-      this.s3.getPresignedUrl(this.getKey('back', 'html')),
-      this.s3.getPresignedUrl(this.getKey('back', 'pdf')),
-      this.s3.getPresignedUrl(this.getKey('back', 'png')),
       this.s3.getPresignedUrl(this.getKey('merged', 'pdf')),
     ]);
 
-    return {
-      front: {
-        html: frontHtml,
-        pdf: frontPdf,
-        png: frontPng,
-      },
-      back: {
-        html: backHtml,
-        pdf: backPdf,
-        png: backPng,
-      },
-      merged: mergedPdf,
-    };
+    const urls = {
+      front: { html: frontHtml, pdf: frontPdf, png: frontPng },
+      back: { html: null, pdf: null, png: null },
+      merged: { pdf: mergedPdf },
+    } as Record<S3KeyKind, Record<S3KeyFormat, string | null>>;
+
+    if (this.template.metadata.hasBackPage) {
+      const [backHtml, backPdf, backPng] = await Promise.all([
+        this.s3.getPresignedUrl(this.getKey('back', 'html')),
+        this.s3.getPresignedUrl(this.getKey('back', 'pdf')),
+        this.s3.getPresignedUrl(this.getKey('back', 'png')),
+      ]);
+
+      urls.back = { html: backHtml, pdf: backPdf, png: backPng };
+    }
+
+    return urls;
   }
 
   private getKey(kind: S3KeyKind, format: S3KeyFormat) {

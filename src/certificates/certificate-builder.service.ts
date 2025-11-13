@@ -1,20 +1,45 @@
-import { Injectable, Scope } from '@nestjs/common';
+import { BadRequestException, Injectable, Scope } from '@nestjs/common';
 import { S3Service } from 'src/s3/s3.service';
 import Handlebars from 'handlebars';
 import { RendererService } from 'src/certificates/renderer.service';
 import QRCode from 'qrcode';
-import { Template } from 'src/templates/entities/template.entity';
+import {
+  BackContentType,
+  Template,
+} from 'src/templates/entities/template.entity';
 import { Signature } from 'src/signatures/entities/signature.entity';
 import { Logo } from 'src/logos/entities/logo.entity';
-import {
-  Children as StructureChildren,
-  StructuresService,
-} from 'src/structures/structures.service';
+import { StructuresService } from 'src/structures/structures.service';
+import { i18n } from 'src/i18n';
+import { UsersService } from 'src/users/users.service';
 
 export type Page = {
   html: string;
   pdf: Express.Multer.File;
   png: Express.Multer.File;
+};
+
+export type MarkerMap = {
+  startDate: string;
+  endDate: string;
+  workload: string;
+  platform: string;
+  user: {
+    name: string;
+    cpf: string;
+  };
+  structure: {
+    name: string;
+  };
+  requirements: {
+    grade: {
+      value: string;
+    };
+  };
+};
+
+export type BuilderOptions = {
+  markerMap?: MarkerMap;
 };
 
 const QR_CODE_BASE_URL = 'https://certificates.redu.digital';
@@ -28,21 +53,32 @@ export class CertificateBuilderService {
     private readonly s3: S3Service,
     private readonly renderer: RendererService,
     private readonly structureService: StructuresService,
+    private readonly usersService: UsersService,
   ) {}
 
-  async build(template: Template, validationCode: string) {
+  async build(
+    template: Template,
+    validationCode: string,
+    options?: BuilderOptions,
+  ) {
+    if (!template.finished)
+      throw new BadRequestException(i18n.t('error.TEMPLATE.NOT_FINISHED'));
+
     this.template = template;
     this.validationCode = validationCode;
-
     const [front, back] = await Promise.all([
-      this.generateFrontPage(),
+      this.generateFrontPage(options?.markerMap),
       this.generateBackPage(),
     ]);
+
+    const merged = back
+      ? await this.renderer.mergePdf([front.pdf, back.pdf])
+      : front.pdf;
 
     return {
       front,
       back,
-      merged: await this.renderer.mergePdf([front.pdf, back.pdf]),
+      merged,
     };
   }
 
@@ -55,36 +91,32 @@ export class CertificateBuilderService {
     });
   }
 
-  private async generateFrontPage() {
-    const [data, qrcode] = await Promise.all([
-      this.getFrontData(),
-      this.generateQRCode(),
-    ]);
-
+  private async generateFrontPage(markerMap?: MarkerMap) {
+    const data = await this.getFrontData(markerMap);
     const templateKey = this.template.blueprint.getS3Key('front');
-    const html = await this.getHandlebarsTemplate(templateKey)
-      .then((handlebars) => handlebars({ ...data, qrcode }))
+    return this.getBaseHandlebarsTemplate(templateKey)
+      .then((handlebars) => handlebars(data))
       .then((html) => Handlebars.compile(html))
-      .then((handlebars) => handlebars({ ...data }));
-
-    return this.render(html);
+      .then((handlebars) => handlebars(data))
+      .then((html) => this.render(html));
   }
 
   private async generateBackPage() {
+    if (!this.template.metadata.hasBackPage) return;
+
     const data = await this.getBackData();
-    const templateKey =
-      typeof data.content === 'string' || data.content?.childrenCount <= 16
-        ? this.template.blueprint.getS3Key('backSmall')
-        : this.template.blueprint.getS3Key('backLarge');
+    const blueprintTemplateKind =
+      typeof data.content === 'string' || data.content.childrenCount <= 16
+        ? 'backSmall'
+        : 'backLarge';
 
-    const html = await this.getHandlebarsTemplate(templateKey).then(
-      (handlebars) => handlebars(data),
-    );
-
-    return this.render(html);
+    const templateKey = this.template.blueprint.getS3Key(blueprintTemplateKind);
+    return this.getBaseHandlebarsTemplate(templateKey)
+      .then((handlebars) => handlebars(data))
+      .then((html) => this.render(html));
   }
 
-  private async getHandlebarsTemplate(spacesKey: string) {
+  private async getBaseHandlebarsTemplate(spacesKey: string) {
     return this.s3
       .getFile(spacesKey)
       .then((file) => file?.Body?.transformToString())
@@ -104,29 +136,38 @@ export class CertificateBuilderService {
     };
   }
 
-  private async getFrontData() {
-    const [signatures, logos, background, structure] = await Promise.all([
-      this.getSignatures(),
-      this.getLogos(),
-      this.getBackground('front'),
-      this.structureService.getReduStructure(this.template.structure),
-    ]);
+  private async getFrontData(markerMap?: MarkerMap) {
+    const [signatures, logos, background, structure, user, qrcode] =
+      await Promise.all([
+        this.getSignatures(),
+        this.getLogos(),
+        this.getBackground('front'),
+        this.structureService.getReduStructure(this.template.structure),
+        this.usersService.getReduUser(),
+        this.generateQRCode(),
+      ]);
 
     // dd/mm/yyyy
     const formatDate = (date: Date) =>
       new Date(date).toLocaleDateString('pt-BR');
 
+    const frontData = this.template.front;
+    const workload = frontData.sumPresenceWorkload
+      ? frontData.workload + structure.attendanceWorkload
+      : frontData.workload;
+
     return {
-      title: this.template.frontData.title,
-      organization: this.template.frontData.organization,
-      workload: this.template.frontData.workload,
-      startDate: formatDate(this.template.frontData.startDate),
-      endDate: formatDate(this.template.frontData.endDate),
-      info: this.template.frontData.info,
+      ...frontData,
+      workload,
+      startDate: formatDate(frontData.startDate),
+      endDate: formatDate(frontData.endDate),
       signatures,
       logos,
       background,
       structure,
+      user,
+      qrcode,
+      ...(markerMap ?? {}),
     };
   }
 
@@ -135,7 +176,7 @@ export class CertificateBuilderService {
       return {
         name: s.name,
         role: s.role,
-        organization: this.template.frontData.organization,
+        organization: this.template.front.organization,
         url: await this.s3.getPresignedUrl(s.getSpacesKey()),
       };
     };
@@ -163,33 +204,31 @@ export class CertificateBuilderService {
   }
 
   private async getBackData() {
-    if (!this.template.metadata.hasBackPage) return this.template.backData;
-
-    const [background, content] = await Promise.all([
+    const [background, content, qrcode] = await Promise.all([
       this.getBackground('back'),
       this.getBackContent(),
+      this.generateQRCode(),
     ]);
 
     return {
-      title: this.template.backData.title,
-      subtitle: this.template.backData.subtitle,
-      footer: this.template.backData.footer,
+      ...this.template.back,
       background,
       content,
+      qrcode,
     };
   }
 
   private async getBackContent() {
-    if (this.template.metadata.hasCustomBackContent)
-      return this.template.backData.content;
+    if (this.template.back.content.type === BackContentType.CUSTOM)
+      return this.template.back.content.value || '';
 
     const children = await this.structureService.getChildren(
       this.template.structure,
-      this.template.backData.content as StructureChildren,
+      this.template.back.content.type,
     );
 
     return {
-      childrenCount: children.pagination.total_count,
+      childrenCount: children.pagination.totalCount,
       children: children.collection.map((child) => ({
         id: child.id,
         name: child.name,

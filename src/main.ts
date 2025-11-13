@@ -84,7 +84,9 @@ function enableI18n(app: INestApplication) {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger: ['error', 'warn', 'log'],
+  });
 
   enableI18n(app);
   enableVersioning(app);
@@ -92,6 +94,12 @@ async function bootstrap() {
   enableValidation(app);
   enableSwagger(app);
 
-  await app.listen(process.env.PORT ?? 3001, '0.0.0.0');
+  // Enable graceful shutdown
+  app.enableShutdownHooks();
+
+  const port = process.env.PORT ?? 3001;
+  await app.listen(port);
 }
-bootstrap().catch(console.error);
+
+// eslint-disable-next-line @typescript-eslint/no-floating-promises
+bootstrap();

@@ -29,6 +29,10 @@ export class Blueprint {
   }
 
   getS3Key(kind: S3KeyKind) {
+    console.log('Blueprint getS3Key', {
+      folderKey: this.folderKey,
+      kind,
+    });
     return `${this.folderKey}/${kind}`;
   }
 }

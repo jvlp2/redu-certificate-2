@@ -25,14 +25,14 @@ export class RendererService {
   }
 
   async pdf(html: string) {
-    const buffer = await this.render(html, async (page) =>
-      page.pdf({
+    const buffer = await this.render(html, async (page) => {
+      return page.pdf({
         format: 'A4',
         landscape: true,
         omitBackground: true,
         printBackground: true,
-      }),
-    );
+      });
+    });
 
     return this.toFile(buffer, 'application/pdf');
   }

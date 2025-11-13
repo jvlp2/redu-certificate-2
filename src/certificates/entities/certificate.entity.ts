@@ -60,6 +60,10 @@ export class Certificate {
     this.validationCode = nanoid();
   }
 
+  get outdated() {
+    return this.template.updatedAt > this.createdAt;
+  }
+
   get folderKey() {
     return `certificates/${this.id}`;
   }

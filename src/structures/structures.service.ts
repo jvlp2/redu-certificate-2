@@ -1,36 +1,40 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ClientService } from 'src/client/client.service';
+import { i18n } from 'src/i18n';
 import { ReduApiService } from 'src/redu-api/redu-api.service';
 import {
   Structure,
   StructureType,
 } from 'src/structures/entities/structure.entity';
-import { GradeType } from 'src/templates/entities/template.entity';
+import {
+  BackContentType,
+  GradeType,
+} from 'src/templates/entities/template.entity';
 import { FindOneOptions, Repository } from 'typeorm';
 
-export type Children = 'course' | 'space' | 'subject' | 'lecture';
+export type Children = Exclude<BackContentType, BackContentType.CUSTOM>;
+
 export type StructureData = {
   id: number;
   name: string;
   description: string;
-};
-export type ChildrenUnitData = {
-  id: number;
-  name: string;
-  description: string;
+  attendanceWorkload: number;
 };
 export type ChildrenData = {
-  collection: ChildrenUnitData[];
+  collection: StructureData[];
   pagination: {
-    total_count: number;
+    totalCount: number;
   };
 };
+
 export type CompletionData = {
   progress: number;
   presence: number;
   grade: number;
+  enrolledAt: Date;
 };
+
 export type Paths = keyof typeof PATHS;
 
 const PATHS = {
@@ -78,8 +82,16 @@ export class StructuresService {
   }
 
   async findOneBy(options: FindOneOptions<Structure>) {
-    const structure = await this.structureRepository.findOne(options);
-    if (!structure) throw new NotFoundException('Structure not found');
+    const client = await this.clientService.getClient();
+    const structure = await this.structureRepository.findOne({
+      ...options,
+      where: {
+        ...options.where,
+        client: { id: client.id },
+      },
+    });
+    if (!structure)
+      throw new NotFoundException(i18n.t('error.NOT_FOUND.STRUCTURE'));
     return structure;
   }
 
@@ -93,15 +105,14 @@ export class StructuresService {
     structureType: StructureType;
     structureId: number;
   }) {
-    const path = `${PATHS[structure.structureType]}/${structure.structureId}`;
-    const url = this.reduApi.buildUrl(path);
+    const url = this.buildUrl({ structure });
     return await this.reduApi.get<StructureData>(url);
   }
 
   async getChildren(structure: Structure, children: Children) {
     const url = this.buildUrl({
       structure,
-      childPath: children,
+      resource: children,
     });
     return await this.reduApi.get<ChildrenData>(url);
   }
@@ -116,24 +127,34 @@ export class StructuresService {
     if (gradeId) queryParams.grade_id = gradeId.toString();
     const url = this.buildUrl({
       structure,
-      childPath: 'completion',
+      resource: 'completion',
       params: queryParams,
     });
-    return await this.reduApi.get<CompletionData>(url);
+
+    const completion = await this.reduApi.get<CompletionData>(url);
+    return {
+      progress: completion.progress,
+      presence: completion.presence,
+      grade: completion.grade,
+      enrolledAt: new Date(completion.enrolledAt),
+    };
   }
 
   private buildUrl({
     structure,
-    childPath,
+    resource,
     params,
   }: {
-    structure: Structure;
-    childPath?: Paths;
+    structure: {
+      structureType: StructureType;
+      structureId: number;
+    };
+    resource?: Paths;
     params?: Record<string, string>;
   }) {
     const apiPrefix = '/v2/certificates';
     const structureSegment = `${PATHS[structure.structureType]}/${structure.structureId}`;
-    const childSegment = childPath ? PATHS[childPath] : '';
+    const childSegment = resource ? PATHS[resource] : '';
 
     return this.reduApi.buildUrl(
       `${apiPrefix}${structureSegment}${childSegment}`,

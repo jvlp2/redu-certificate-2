@@ -17,11 +17,12 @@ import {
   CertificateBuilderService,
   type Page,
 } from 'src/certificates/certificate-builder.service';
-import { Template } from 'src/templates/entities/template.entity';
+import { S3KeyKind, Template } from 'src/templates/entities/template.entity';
 import { RequirementsService } from 'src/certificates/requirements.service';
 import { StructureType } from 'src/structures/entities/structure.entity';
 import { TemplatesService } from 'src/templates/templates.service';
 import { UsersService } from 'src/users/users.service';
+import { i18n } from 'src/i18n';
 
 @Injectable()
 export class CertificatesService {
@@ -42,6 +43,7 @@ export class CertificatesService {
       structureType,
       structureId,
       {
+        finished: true,
         relations: {
           structure: true,
           logos: true,
@@ -51,7 +53,7 @@ export class CertificatesService {
       },
     );
 
-    const certificate = await this.initCertificate(template);
+    const certificate = await this.findOrInitializeCertificate(template);
     const files = await this.certificateBuilder.build(
       template,
       certificate.validationCode,
@@ -62,7 +64,7 @@ export class CertificatesService {
   }
 
   async findAll() {
-    const { id: reduUserId } = await this.usersService.reduUser();
+    const { id: reduUserId } = await this.usersService.getReduUser();
 
     const certificates = await this.certificateRepository.find({
       where: { user: { reduUserId } },
@@ -70,26 +72,29 @@ export class CertificatesService {
     });
 
     return Promise.all(
-      certificates.map(async (certificate) => ({
-        id: certificate.id,
-        validationCode: certificate.validationCode,
-        createdAt: certificate.createdAt,
-        urls: await this.getUrls(certificate),
-        structure: {
-          type: certificate.template.structure.structureType,
-          id: certificate.template.structure.structureId,
-          name: certificate.template.structure.name,
-        },
-      })),
+      certificates.map(async (certificate) => {
+        return {
+          canGenerate: await this.requirements.canGenerate(
+            certificate.template,
+          ),
+          template: {
+            title: certificate.template.front.title,
+          },
+          outdated: certificate.outdated,
+          urls: await this.getUrls(certificate),
+          createdAt: certificate.createdAt,
+          structure: {
+            type: certificate.template.structure.structureType,
+            id: certificate.template.structure.structureId,
+            name: certificate.template.structure.name,
+          },
+        };
+      }),
     );
   }
 
   async findOne(id: string) {
-    const certificate = await this.certificateRepository.findOne({
-      where: { id },
-    });
-    if (!certificate) throw new NotFoundException('Certificate not found');
-    return certificate;
+    return this.findOneBy({ where: { id } });
   }
 
   async findOneByTemplate(
@@ -100,7 +105,7 @@ export class CertificatesService {
     },
   ) {
     const reduUserId =
-      options?.reduUserId ?? (await this.usersService.reduUser()).id;
+      options?.reduUserId ?? (await this.usersService.getReduUser()).id;
     return this.findOneBy({
       where: {
         user: { reduUserId },
@@ -112,7 +117,8 @@ export class CertificatesService {
 
   async findOneBy(options: FindOneOptions<Certificate>) {
     const certificate = await this.certificateRepository.findOne(options);
-    if (!certificate) throw new NotFoundException('Certificate not found');
+    if (!certificate)
+      throw new NotFoundException(i18n.t('error.NOT_FOUND.CERTIFICATE'));
     return certificate;
   }
 
@@ -120,12 +126,13 @@ export class CertificatesService {
     const template = await this.templatesService.findOneByStructure(
       structureType,
       structureId,
+      { relations: { structure: true } },
     );
     const canGenerate = await this.requirements.canGenerate(template);
     return this.findOneByTemplate(template)
       .then(async (certificate) => ({
         canGenerate,
-        outdated: template.updatedAt > certificate?.createdAt,
+        outdated: certificate.outdated,
         requirements: template.requirements,
         urls: await this.getUrls(certificate),
       }))
@@ -137,6 +144,45 @@ export class CertificatesService {
       }));
   }
 
+  async findOneByValidationCode(validationCode: string) {
+    const certificate = await this.certificateRepository
+      .createQueryBuilder('certificate')
+      .leftJoinAndSelect('certificate.user', 'user')
+      .leftJoinAndSelect('certificate.template', 'template')
+      .leftJoinAndSelect('template.structure', 'structure')
+      .where('certificate.validationCode = :validationCode', { validationCode })
+      .andWhere('certificate.createdAt <= template.updatedAt')
+      .getOne();
+
+    if (!certificate)
+      throw new NotFoundException(i18n.t('error.NOT_FOUND.CERTIFICATE'));
+    return certificate;
+  }
+
+  async getValidationInfo(validationCode: string) {
+    const certificate = await this.findOneByValidationCode(validationCode);
+    const url = await this.s3.getPresignedUrl(
+      certificate.getS3Key({ kind: 'merged', format: 'pdf' }),
+    );
+
+    return {
+      url,
+      validationCode: certificate.validationCode,
+      createdAt: certificate.createdAt,
+      workload: certificate.template.front.workload,
+      structure: {
+        type: certificate.template.structure.structureType,
+        id: certificate.template.structure.structureId,
+        name: certificate.template.structure.name,
+      },
+      user: {
+        name: certificate.user.name,
+        email: certificate.user.email,
+        description: certificate.user.description,
+      },
+    };
+  }
+
   async remove(id: string) {
     const certificate = await this.findOne(id);
     return this.dataSource.transaction(async (entityManager) => {
@@ -145,21 +191,26 @@ export class CertificatesService {
     });
   }
 
-  private async initCertificate(template: Template) {
-    const reduUser = await this.usersService.reduUser();
+  private async findOrInitializeCertificate(template: Template) {
+    const reduUser = await this.usersService.getReduUser();
     const user = await this.usersService.findOrCreate(reduUser);
 
-    await this.findOneByTemplate(template, { reduUserId: reduUser.id })
-      .then((certificate) => this.remove(certificate.id))
-      .catch(() => {});
+    try {
+      const certificate = await this.findOneByTemplate(template, {
+        reduUserId: reduUser.id,
+        relations: { template: true },
+      });
+      return this.generateValidationCode(certificate);
+    } catch (error) {
+      if (!(error instanceof NotFoundException)) throw error;
 
-    const certificate = this.certificateRepository.create({
-      id: uuidv7(),
-      template,
-      user,
-    });
-
-    return this.generateValidationCode(certificate);
+      const certificate = this.certificateRepository.create({
+        id: uuidv7(),
+        template,
+        user,
+      });
+      return this.generateValidationCode(certificate);
+    }
   }
 
   private async generateValidationCode(certificate: Certificate) {
@@ -178,11 +229,11 @@ export class CertificatesService {
     certificate: Certificate,
     files: {
       front: Page;
-      back: Page;
+      back: Page | undefined;
       merged: Express.Multer.File;
     },
   ) {
-    const [front, back, merged] = await Promise.all([
+    await Promise.all([
       this.uploadPage(certificate, 'front', files.front),
       this.uploadPage(certificate, 'back', files.back),
       this.s3.uploadFile(
@@ -190,21 +241,16 @@ export class CertificatesService {
         certificate.getS3Key({ kind: 'merged', format: 'pdf' }),
       ),
     ]);
-
-    return {
-      front,
-      back,
-      merged,
-    };
   }
 
   private async uploadPage(
     certificate: Certificate,
     kind: 'front' | 'back',
-    page: Page,
+    page?: Page,
   ) {
-    const key = (format: S3KeyFormat) => certificate.getS3Key({ kind, format });
+    if (!page) return;
 
+    const key = (format: S3KeyFormat) => certificate.getS3Key({ kind, format });
     await Promise.all([
       this.s3.uploadFile(page.pdf, key('pdf')),
       this.s3.uploadFile(page.png, key('png')),
@@ -213,22 +259,11 @@ export class CertificatesService {
   }
 
   private async getUrls(certificate: Certificate) {
-    const [
-      frontHtml,
-      frontPdf,
-      frontPng,
-      backHtml,
-      backPdf,
-      backPng,
-      mergedPdf,
-    ] = await Promise.all(
+    const [frontHtml, frontPdf, frontPng, mergedPdf] = await Promise.all(
       [
         { kind: 'front', format: 'html' },
         { kind: 'front', format: 'pdf' },
         { kind: 'front', format: 'png' },
-        { kind: 'back', format: 'html' },
-        { kind: 'back', format: 'pdf' },
-        { kind: 'back', format: 'png' },
         { kind: 'merged', format: 'pdf' },
       ].map((options: S3KeyOptions) => {
         const key = certificate.getS3Key(options);
@@ -236,20 +271,26 @@ export class CertificatesService {
       }),
     );
 
-    return {
-      front: {
-        html: frontHtml,
-        pdf: frontPdf,
-        png: frontPng,
-      },
-      back: {
-        html: backHtml,
-        pdf: backPdf,
-        png: backPng,
-      },
-      merged: {
-        pdf: mergedPdf,
-      },
-    };
+    const urls = {
+      front: { html: frontHtml, pdf: frontPdf, png: frontPng },
+      back: { html: null, pdf: null, png: null },
+      merged: { pdf: mergedPdf },
+    } as Record<S3KeyKind, Record<S3KeyFormat, string | null>>;
+
+    if (certificate.template.metadata.hasBackPage) {
+      const [backHtml, backPdf, backPng] = await Promise.all(
+        [
+          { kind: 'back', format: 'html' },
+          { kind: 'back', format: 'pdf' },
+          { kind: 'back', format: 'png' },
+        ].map((options: S3KeyOptions) => {
+          const key = certificate.getS3Key(options);
+          return this.s3.getPresignedUrl(key);
+        }),
+      );
+      urls.back = { html: backHtml, pdf: backPdf, png: backPng };
+    }
+
+    return urls;
   }
 }
